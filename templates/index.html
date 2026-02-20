@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer Segmentation – K-Means</title>
+  <style>
+    :root {
+      --bg-start: #0f172a;
+      --bg-mid: #1e1b4b;
+      --bg-end: #312e81;
+      --card-bg: rgba(255, 255, 255, 0.95);
+      --card-border: rgba(255, 255, 255, 0.25);
+      --card-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+      --card-shadow-hover: 0 32px 64px -12px rgba(0, 0, 0, 0.5);
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --accent-glow: rgba(99, 102, 241, 0.35);
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+      --input-bg: #f8fafc;
+      --input-border: #e2e8f0;
+      --radius-lg: 24px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(160deg, var(--bg-start) 0%, var(--bg-mid) 45%, var(--bg-end) 100%);
+      background-attachment: fixed;
+      color: var(--text-primary);
+      padding: 2.5rem 1.25rem;
+      line-height: 1.6;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      animation: fadeDown 0.6s ease-out;
+    }
+
+    header .subtitle {
+      display: inline-block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--accent-light);
+      margin-bottom: 0.5rem;
+      opacity: 0.95;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #fff;
+      text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+    }
+
+    @keyframes fadeDown {
+      from {
+        opacity: 0;
+        transform: translateY(-12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--card-shadow);
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s ease, border-color 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--card-shadow-hover);
+      border-color: rgba(255, 255, 255, 0.35);
+    }
+
+    .card.form-card {
+      animation: fadeIn 0.5s ease-out 0.1s both;
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card-title::before {
+      content: '';
+      width: 4px;
+      height: 1.25rem;
+      background: linear-gradient(180deg, var(--accent), var(--accent-light));
+      border-radius: 2px;
+    }
+
+    .input-group {
+      margin-bottom: 1.35rem;
+    }
+
+    .input-group:last-of-type {
+      margin-bottom: 0;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+    }
+
+    .input-wrap {
+      display: flex;
+      align-items: center;
+      background: var(--input-bg);
+      border: 2px solid var(--input-border);
+      border-radius: var(--radius-sm);
+      padding: 0 1rem;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+    }
+
+    .input-wrap:hover {
+      border-color: #cbd5e1;
+    }
+
+    .input-wrap:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-glow);
+      background: #fff;
+    }
+
+    .input-wrap .icon {
+      font-size: 1.35rem;
+      margin-right: 0.75rem;
+      opacity: 0.8;
+    }
+
+    .input-group input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-size: 1rem;
+      font-weight: 500;
+      padding: 1rem 0;
+      outline: none;
+      color: var(--text-primary);
+    }
+
+    .input-group input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .btn-predict {
+      width: 100%;
+      padding: 1rem 1.5rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+      font-family: inherit;
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent) 0%, #4f46e5 50%, #4338ca 100%);
+      background-size: 200% 200%;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.25s ease, background-position 0.5s ease;
+      margin-top: 1.25rem;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+    }
+
+    .btn-predict:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.5);
+      background-position: 100% 50%;
+    }
+
+    .btn-predict:active {
+      transform: translateY(0);
+    }
+
+    .result-card {
+      display: none;
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    .result-card.visible {
+      display: block;
+    }
+
+    .result-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.65rem 1.35rem;
+      border-radius: var(--radius-sm);
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      margin-bottom: 1rem;
+      letter-spacing: 0.01em;
+    }
+
+    .badge.gray { background: linear-gradient(135deg, #64748b 0%, #475569 100%); }
+    .badge.green { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+    .badge.orange { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
+    .badge.red { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+    .badge.blue { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+
+    .description {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 1rem;
+    }
+
+    .centroid-info {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border: 1px solid #e2e8f0;
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      margin-top: 1.25rem;
+    }
+
+    .centroid-info-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .centroid-values {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .centroid-item {
+      background: #fff;
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1rem;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .centroid-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .centroid-value {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+    }
+
+    .visualization-card {
+      margin-top: 1.5rem;
+      animation: fadeIn 0.5s ease-out 0.2s both;
+    }
+
+    .visualization-card .card-title {
+      margin-bottom: 1rem;
+    }
+
+    .cluster-image-wrap {
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      background: #f8fafc;
+    }
+
+    .cluster-image {
+      width: 100%;
+      height: auto;
+      display: block;
+      vertical-align: middle;
+    }
+
+    .cluster-placeholder {
+      display: none;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 3rem 2rem;
+      font-size: 0.95rem;
+    }
+
+    .error-msg {
+      background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+      color: #b91c1c;
+      padding: 1rem 1.25rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      font-weight: 500;
+      margin-top: 1rem;
+      display: none;
+      border: 1px solid #fecaca;
+    }
+
+    .error-msg.visible {
+      display: block;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 2.5rem;
+      padding-top: 1.5rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.7);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      animation: fadeIn 0.5s ease-out 0.3s both;
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (min-width: 768px) {
+      .results-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+      }
+      header h1 {
+        font-size: 2.25rem;
+      }
+    }
+
+    @media (max-width: 520px) {
+      body { padding: 1.5rem 1rem; }
+      header h1 { font-size: 1.5rem; }
+      header .subtitle { font-size: 0.7rem; }
+      .card { padding: 1.5rem; }
+      .centroid-values {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <p class="subtitle">AIML • K-Means Clustering</p>
+      <h1>Customer Segmentation</h1>
+    </header>
+
+    <main>
+      <section class="card form-card">
+        <h2 class="card-title">Enter customer details</h2>
+        <form id="segment-form">
+          <div class="input-group">
+            <label for="income">Annual Income (k$)</label>
+            <div class="input-wrap">
+              <span class="icon" aria-hidden="true">💰</span>
+              <input type="number" id="income" name="income" placeholder="e.g. 50" min="0" step="0.01" required>
+            </div>
+          </div>
+          <div class="input-group">
+            <label for="score">Spending Score (1–100)</label>
+            <div class="input-wrap">
+              <span class="icon" aria-hidden="true">📊</span>
+              <input type="number" id="score" name="score" placeholder="e.g. 60" min="1" max="100" step="1" required>
+            </div>
+          </div>
+          <button type="submit" class="btn-predict">Predict segment</button>
+          <p id="error-msg" class="error-msg" role="alert"></p>
+        </form>
+      </section>
+
+      <div class="results-grid">
+        <section class="card result-card" id="result-card">
+          <p class="result-label">Customer segment</p>
+          <p id="result-badge" class="badge"></p>
+          <p id="result-desc" class="description"></p>
+          <div class="centroid-info" id="centroid-info" style="display: none;">
+            <p class="centroid-info-title">Cluster centroid values</p>
+            <div class="centroid-values">
+              <div class="centroid-item">
+                <span class="centroid-label">Centroid income</span>
+                <span class="centroid-value" id="centroid-income">–</span>
+              </div>
+              <div class="centroid-item">
+                <span class="centroid-label">Centroid score</span>
+                <span class="centroid-value" id="centroid-score">–</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card visualization-card">
+          <h2 class="card-title">K-Means customer segments</h2>
+          <div class="cluster-image-wrap">
+            <img src="{{ url_for('static', filename='cluster.png') }}" alt="K-Means Cluster Visualization" class="cluster-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <p class="cluster-placeholder" id="cluster-placeholder">Visualization will appear after training the model.</p>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer>
+      AIML Project – K-Means Clustering
+    </footer>
+  </div>
+
+  <script>
+    const form = document.getElementById('segment-form');
+    const resultCard = document.getElementById('result-card');
+    const resultBadge = document.getElementById('result-badge');
+    const resultDesc = document.getElementById('result-desc');
+    const errorMsg = document.getElementById('error-msg');
+    const centroidInfo = document.getElementById('centroid-info');
+    const centroidIncome = document.getElementById('centroid-income');
+    const centroidScore = document.getElementById('centroid-score');
+    const clusterPlaceholder = document.getElementById('cluster-placeholder');
+
+    function showError(message) {
+      errorMsg.textContent = message;
+      errorMsg.classList.add('visible');
+      resultCard.classList.remove('visible');
+      centroidInfo.style.display = 'none';
+    }
+
+    function hideError() {
+      errorMsg.classList.remove('visible');
+    }
+
+    function showResult(label, color, description, centroidIncomeVal, centroidScoreVal) {
+      hideError();
+      resultBadge.textContent = label;
+      resultBadge.className = 'badge ' + color.toLowerCase();
+      resultDesc.textContent = 'This customer belongs to the ' + description + '.';
+
+      if (centroidIncomeVal !== undefined && centroidScoreVal !== undefined) {
+        centroidIncome.textContent = centroidIncomeVal.toFixed(2) + ' k$';
+        centroidScore.textContent = centroidScoreVal.toFixed(2);
+        centroidInfo.style.display = 'block';
+      } else {
+        centroidInfo.style.display = 'none';
+      }
+
+      resultCard.classList.add('visible');
+      resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const incomeRaw = form.income.value.trim();
+      const scoreRaw = form.score.value.trim();
+
+      if (!incomeRaw || !scoreRaw) {
+        showError('Please fill in both Annual Income and Spending Score.');
+        return;
+      }
+
+      const income = parseFloat(incomeRaw);
+      const score = parseFloat(scoreRaw);
+
+      if (Number.isNaN(income) || income < 0) {
+        showError('Annual Income must be a valid non-negative number.');
+        return;
+      }
+
+      if (Number.isNaN(score) || score < 1 || score > 100) {
+        showError('Spending Score must be between 1 and 100.');
+        return;
+      }
+
+      fetch('/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ income: incomeRaw, score: scoreRaw })
+      })
+        .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data }; }); })
+        .then(function (result) {
+          if (result.ok && result.data.success) {
+            showResult(
+              result.data.label,
+              result.data.color,
+              result.data.description,
+              result.data.centroid_income,
+              result.data.centroid_score
+            );
+          } else {
+            showError(result.data.error || 'Prediction failed. Please try again.');
+          }
+        })
+        .catch(function () {
+          showError('Network error. Please try again.');
+        });
+    });
+
+    if (clusterPlaceholder) {
+      document.querySelector('.cluster-image').addEventListener('error', function() {
+        clusterPlaceholder.style.display = 'block';
+      });
+    }
+  </script>
+</body>
+</html>
