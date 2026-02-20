@@ -151,23 +151,22 @@ Then open **http://127.0.0.1:5000**.
 ```
 customer-segmentation-app/
 │
-├── app.py                    # Flask backend (loads model, scaler, centroids)
-├── train_model.py            # Training: scale, K-Means, centroids, visualization
-├── model.pkl                 # Trained K-Means model (generated)
-├── scaler.pkl                # StandardScaler (generated)
-├── centroids.json            # Cluster centroids in original scale (generated)
-├── Mall_Customers.csv        # Dataset
-├── requirements.txt          # Python dependencies
-├── README.md                 # This file
-├── LICENSE                   # MIT License
+├── app.py
+├── train_model.py
+├── centroids.json
+├── Mall_Customers.csv
+├── requirements.txt
+├── README.md
+├── LICENSE
 │
 ├── static/
-│   └── cluster.png           # K-Means scatter plot (generated)
+│   ├── cluster.png
+│   ├── style.css
+│   └── script.js
 │
 └── templates/
-    └── index.html           # Web UI (form, result, centroid display, visualization)
+    └── index.html
 ```
-
 ## 📡 API Documentation
 
 ### `GET /`
